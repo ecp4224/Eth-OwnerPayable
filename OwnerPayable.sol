@@ -11,11 +11,10 @@ pragma solidity ^0.4.20;
  * To mark a function as owner pays, just give the function the ownerPays modifier.
  */
 contract OwnerPays is Ownable {
-    uint passiveGasSpendingLimit = 5000;
-    uint totalPassiveGasSpent = 0;
+    uint passiveGasAllowance = 0;
     bool paused = false;
 
-    event PassiveGasSpent(uint gasAmount, uint totalSpent, uint spendingLimit);
+    event PassiveGasSpent(uint gasAmount, uint totalSpent, uint spendingLimit, uint totalPrice);
 
     /**
      * @dev Record the exact amount of gas spent during this function call
@@ -23,7 +22,7 @@ contract OwnerPays is Ownable {
      */
     modifier ownerPays {
         require(!paused);
-        require(totalPassiveGasSpent < passiveGasSpendingLimit);
+        require(passiveGasAllowance > 0);
 
         uint beginGas = msg.gas; //Record remaining at start
 
@@ -36,44 +35,49 @@ contract OwnerPays is Ownable {
         //TODO Give back gas to owner
         //msg.gas = msg.gas + totalGas;
 
-        require(totalGas + totalPassiveGasSpent < passiveGasSpendingLimit);
+        require(passiveGasAllowance - totalGas > 0);
 
-        PassiveGasSpent(totalGas, totalPassiveGasSpent, passiveGasSpendingLimit);
+        PassiveGasSpent(totalGas, totalPassiveGasSpent, passiveGasSpendingLimit, totalPrice);
 
         msg.sender.send(totalGas);
-        totalPassiveGasSpent += totalGas;
+        passiveGasAllowance -= totalGas;
     }
 
     /**
-     * @dev Set the spending limit for passive gas.
-     */
-    function setPassiveGasSpendingLimit(uint limit) onlyOwner public {
-        passiveGasSpendingLimit = limit;
-    }
-
-    /**
-     * @dev Add passive gas to this contract.
+     * @dev Add passive gas to this contract. The value sent to this
+     * call will be added to the total amount of passiveGasAllowance
      */
     function addSpending() onlyOwner public {
         require(msg.value > 0);
-        totalPassiveGasSpent = 0;
+        passiveGasAllowance += msg.value;
     }
 
-    function getTotalPassiveGasSpent() onlyOwner view returns (uint) {
-        return totalPassiveGasSpent;
+    /**
+     * @dev Get total passive gas left in this contract.
+     */
+    function getTotalPassiveGas() onlyOwner view returns (uint) {
+        return passiveGasAllowance;
     }
 
-    function getPassiveGasSpendingLimit() onlyOwner view returns (uint) {
-        return passiveGasSpendingLimit;
-    }
-
+    /**
+     * @dev Pause all usage of passive gas. This will cause any function using
+     * the ownerPays to throw before execution begins
+     */
     function pause() onlyOwner public {
         paused = true;
     }
 
+    /**
+     * @dev Resume all usage of passive gas.
+     */
     function resume() onlyOwner public {
         paused = false;
     }
+
+    /**
+     * @dev Check whether passive gas usage is paused. If passive gas usage is
+     * paused, any function using the ownerPays to throw before execution begins
+     */
     function isPaused () onlyOwner public view returns(bool) {
         return paused;
     }

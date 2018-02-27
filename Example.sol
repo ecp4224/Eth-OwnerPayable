@@ -1,5 +1,7 @@
 pragma solidity ^0.4.20;
 
+import "OwnerPays.sol";
+
 //TODO Come up with good example of owner pays model
 contract ExampleContract is OwnerPays {
 

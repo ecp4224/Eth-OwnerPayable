@@ -1,5 +1,7 @@
 pragma solidity ^0.4.20;
 
+import "Ownable.sol";
+
 /**
  * @title OwnerPays
  * @dev The OwnerPays contract is a type of Ownable, and thus has an owner address, and provides basic authorization control
